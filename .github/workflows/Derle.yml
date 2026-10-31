@@ -1,0 +1,651 @@
+name: build
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.1.1
+          cache-disabled: true
+      - name: Dosyalari yaz
+        run: |
+          cat > build.gradle <<'DOSYA_SONU'
+          plugins {
+              id 'eclipse'
+              id 'idea'
+              id 'maven-publish'
+              id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+          }
+
+          version = mod_version
+          group = mod_group_id
+
+          base {
+              archivesName = mod_id
+          }
+
+          java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+          minecraft {
+              mappings channel: mapping_channel, version: mapping_version
+
+              copyIdeResources = true
+
+              runs {
+                  configureEach {
+                      workingDirectory project.file('run')
+                      property 'forge.logging.markers', 'REGISTRIES'
+                      property 'forge.logging.console.level', 'debug'
+
+                      mods {
+                          "${mod_id}" {
+                              source sourceSets.main
+                          }
+                      }
+                  }
+
+                  client {
+                      property 'forge.enabledGameTestNamespaces', mod_id
+                  }
+
+                  server {
+                      property 'forge.enabledGameTestNamespaces', mod_id
+                      args '--nogui'
+                  }
+              }
+          }
+
+          sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+          dependencies {
+              minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+          }
+
+          tasks.named('jar', Jar).configure {
+              manifest {
+                  attributes([
+                          'Specification-Title'     : mod_id,
+                          'Specification-Vendor'    : mod_authors,
+                          'Specification-Version'   : '1',
+                          'Implementation-Title'    : project.name,
+                          'Implementation-Version'  : project.jar.archiveVersion,
+                          'Implementation-Vendor'   : mod_authors,
+                          'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+                  ])
+              }
+              finalizedBy 'reobfJar'
+          }
+
+          tasks.withType(JavaCompile).configureEach {
+              options.encoding = 'UTF-8'
+          }
+          DOSYA_SONU
+          cat > gradle.properties <<'DOSYA_SONU'
+          org.gradle.jvmargs=-Xmx3G
+          org.gradle.daemon=false
+
+          minecraft_version=1.20.1
+          forge_version=47.3.0
+          mapping_channel=official
+          mapping_version=1.20.1
+
+          mod_id=mysteriouschild
+          mod_name=Mysterious Child's Sword
+          mod_version=1.0.0
+          mod_group_id=com.example.mysteriouschild
+          mod_authors=Kanka
+          DOSYA_SONU
+          cat > settings.gradle <<'DOSYA_SONU'
+          pluginManagement {
+              repositories {
+                  gradlePluginPortal()
+                  maven {
+                      name = 'MinecraftForge'
+                      url = 'https://maven.minecraftforge.net/'
+                  }
+              }
+          }
+
+          rootProject.name = 'mysteriouschild'
+          DOSYA_SONU
+          mkdir -p src/main/resources/META-INF
+          cat > src/main/resources/META-INF/mods.toml <<'DOSYA_SONU'
+          modLoader="javafml"
+          loaderVersion="[47,)"
+          license="MIT"
+
+          [[mods]]
+          modId="mysteriouschild"
+          version="1.0.0"
+          displayName="Mysterious Child's Sword"
+          description="Hidden room with the Mysterious Child's Sword."
+
+          [[dependencies.mysteriouschild]]
+              modId="forge"
+              mandatory=true
+              versionRange="[47,)"
+              ordering="NONE"
+              side="BOTH"
+
+          [[dependencies.mysteriouschild]]
+              modId="minecraft"
+              mandatory=true
+              versionRange="[1.20.1,1.21)"
+              ordering="NONE"
+              side="BOTH"
+          DOSYA_SONU
+          mkdir -p src/main/resources
+          cat > src/main/resources/pack.mcmeta <<'DOSYA_SONU'
+          {"pack":{"description":"Mysterious Child Sword","pack_format":15}}
+          DOSYA_SONU
+          mkdir -p src/main/resources/assets/mysteriouschild/lang
+          cat > src/main/resources/assets/mysteriouschild/lang/en_us.json <<'DOSYA_SONU'
+          {
+            "item.mysteriouschild.mysterious_child_sword": "Mysterious Child's Sword",
+            "block.mysteriouschild.sword_in_stone": "Sword in the Stone",
+            "mysteriouschild.tooltip.sword": "An ancient blade that fells any foe in a single strike.",
+            "mysteriouschild.tooltip.sword2": "It never breaks.",
+            "mysteriouschild.animation.title": "Mysterious Child's Sword",
+            "mysteriouschild.animation.subtitle": "Destiny has chosen you."
+          }
+          DOSYA_SONU
+          mkdir -p src/main/resources/assets/mysteriouschild/lang
+          cat > src/main/resources/assets/mysteriouschild/lang/tr_tr.json <<'DOSYA_SONU'
+          {
+            "item.mysteriouschild.mysterious_child_sword": "Gizemli \u00c7ocuk'un K\u0131l\u0131c\u0131",
+            "block.mysteriouschild.sword_in_stone": "Ta\u015fa Sapl\u0131 K\u0131l\u0131\u00e7",
+            "mysteriouschild.tooltip.sword": "Her d\u00fc\u015fman\u0131 tek vuru\u015fta deviren kadim bir k\u0131l\u0131\u00e7.",
+            "mysteriouschild.tooltip.sword2": "Asla k\u0131r\u0131lmaz.",
+            "mysteriouschild.animation.title": "Gizemli \u00c7ocuk'un K\u0131l\u0131c\u0131",
+            "mysteriouschild.animation.subtitle": "Kader seni se\u00e7ti."
+          }
+          DOSYA_SONU
+          mkdir -p src/main/resources/assets/mysteriouschild/blockstates
+          cat > src/main/resources/assets/mysteriouschild/blockstates/sword_in_stone.json <<'DOSYA_SONU'
+          {
+            "variants": {
+              "": {
+                "model": "mysteriouschild:block/sword_in_stone"
+              }
+            }
+          }
+          DOSYA_SONU
+          mkdir -p src/main/resources/assets/mysteriouschild/models/block
+          cat > src/main/resources/assets/mysteriouschild/models/block/sword_in_stone.json <<'DOSYA_SONU'
+          {
+            "parent": "minecraft:block/cube_all",
+            "textures": {
+              "all": "minecraft:block/chiseled_stone_bricks"
+            }
+          }
+          DOSYA_SONU
+          mkdir -p src/main/resources/assets/mysteriouschild/models/item
+          cat > src/main/resources/assets/mysteriouschild/models/item/mysterious_child_sword.json <<'DOSYA_SONU'
+          {
+            "parent": "minecraft:item/handheld",
+            "textures": {
+              "layer0": "minecraft:item/netherite_sword"
+            }
+          }
+          DOSYA_SONU
+          mkdir -p src/main/resources/assets/mysteriouschild/models/item
+          cat > src/main/resources/assets/mysteriouschild/models/item/sword_in_stone.json <<'DOSYA_SONU'
+          {
+            "parent": "mysteriouschild:block/sword_in_stone"
+          }
+          DOSYA_SONU
+          mkdir -p src/main/java/com/example/mysteriouschild
+          cat > src/main/java/com/example/mysteriouschild/MysteriousChildMod.java <<'DOSYA_SONU'
+          package com.example.mysteriouschild;
+
+          import net.minecraft.ChatFormatting;
+          import net.minecraft.client.Minecraft;
+          import net.minecraft.client.gui.Font;
+          import net.minecraft.client.gui.GuiGraphics;
+          import net.minecraft.commands.Commands;
+          import net.minecraft.core.BlockPos;
+          import net.minecraft.core.particles.ParticleTypes;
+          import net.minecraft.nbt.CompoundTag;
+          import net.minecraft.network.FriendlyByteBuf;
+          import net.minecraft.network.chat.Component;
+          import net.minecraft.resources.ResourceLocation;
+          import net.minecraft.server.level.ServerLevel;
+          import net.minecraft.server.level.ServerPlayer;
+          import net.minecraft.sounds.SoundEvents;
+          import net.minecraft.sounds.SoundSource;
+          import net.minecraft.util.Mth;
+          import net.minecraft.util.RandomSource;
+          import net.minecraft.world.InteractionHand;
+          import net.minecraft.world.InteractionResult;
+          import net.minecraft.world.entity.EntityType;
+          import net.minecraft.world.entity.LightningBolt;
+          import net.minecraft.world.entity.LivingEntity;
+          import net.minecraft.world.entity.player.Player;
+          import net.minecraft.world.item.BlockItem;
+          import net.minecraft.world.item.CreativeModeTabs;
+          import net.minecraft.world.item.Item;
+          import net.minecraft.world.item.ItemStack;
+          import net.minecraft.world.item.Rarity;
+          import net.minecraft.world.item.SwordItem;
+          import net.minecraft.world.item.Tier;
+          import net.minecraft.world.item.TooltipFlag;
+          import net.minecraft.world.item.crafting.Ingredient;
+          import net.minecraft.world.level.Level;
+          import net.minecraft.world.level.block.Block;
+          import net.minecraft.world.level.block.Blocks;
+          import net.minecraft.world.level.block.LanternBlock;
+          import net.minecraft.world.level.block.state.BlockBehaviour;
+          import net.minecraft.world.level.block.state.BlockState;
+          import net.minecraft.world.phys.BlockHitResult;
+          import net.minecraft.world.phys.Vec3;
+          import net.minecraftforge.api.distmarker.Dist;
+          import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+          import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+          import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+          import net.minecraftforge.event.RegisterCommandsEvent;
+          import net.minecraftforge.event.entity.player.PlayerEvent;
+          import net.minecraftforge.eventbus.api.IEventBus;
+          import net.minecraftforge.eventbus.api.SubscribeEvent;
+          import net.minecraftforge.fml.DistExecutor;
+          import net.minecraftforge.fml.common.Mod;
+          import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+          import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+          import net.minecraftforge.network.NetworkDirection;
+          import net.minecraftforge.network.NetworkEvent;
+          import net.minecraftforge.network.NetworkRegistry;
+          import net.minecraftforge.network.PacketDistributor;
+          import net.minecraftforge.network.simple.SimpleChannel;
+          import net.minecraftforge.registries.DeferredRegister;
+          import net.minecraftforge.registries.ForgeRegistries;
+          import net.minecraftforge.registries.RegistryObject;
+
+          import java.util.List;
+          import java.util.function.Supplier;
+
+          @Mod(MysteriousChildMod.MOD_ID)
+          public class MysteriousChildMod {
+
+              public static final String MOD_ID = "mysteriouschild";
+
+              public static final DeferredRegister<Block> BLOCKS =
+                      DeferredRegister.create(ForgeRegistries.BLOCKS, MOD_ID);
+              public static final DeferredRegister<Item> ITEMS =
+                      DeferredRegister.create(ForgeRegistries.ITEMS, MOD_ID);
+
+              public static final RegistryObject<Block> SWORD_IN_STONE =
+                      BLOCKS.register("sword_in_stone", SwordInStoneBlock::new);
+              public static final RegistryObject<Item> MYSTERIOUS_SWORD =
+                      ITEMS.register("mysterious_child_sword", MysteriousSwordItem::new);
+              public static final RegistryObject<Item> SWORD_IN_STONE_ITEM =
+                      ITEMS.register("sword_in_stone",
+                              () -> new BlockItem(SWORD_IN_STONE.get(), new Item.Properties().rarity(Rarity.EPIC)));
+
+              private static final String PROTOCOL = "1";
+              public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
+                      new ResourceLocation(MOD_ID, "main"),
+                      () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
+
+              public MysteriousChildMod() {
+                  IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+                  BLOCKS.register(modBus);
+                  ITEMS.register(modBus);
+                  modBus.addListener(this::commonSetup);
+                  modBus.addListener(this::addCreativeTabContents);
+              }
+
+              private void commonSetup(final FMLCommonSetupEvent event) {
+                  event.enqueueWork(() -> CHANNEL.messageBuilder(SwordClaimedPacket.class, 0, NetworkDirection.PLAY_TO_CLIENT)
+                          .encoder(SwordClaimedPacket::encode)
+                          .decoder(SwordClaimedPacket::decode)
+                          .consumerMainThread(SwordClaimedPacket::handle)
+                          .add());
+              }
+
+              private void addCreativeTabContents(final BuildCreativeModeTabContentsEvent event) {
+                  if (event.getTabKey() == CreativeModeTabs.COMBAT) {
+                      event.accept(MYSTERIOUS_SWORD);
+                  }
+                  if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+                      event.accept(SWORD_IN_STONE_ITEM);
+                  }
+              }
+
+              // ---------------------------------------------------------------- Tier
+              public static class MysteriousTier implements Tier {
+                  public static final MysteriousTier INSTANCE = new MysteriousTier();
+
+                  public int getUses() { return 0; }
+                  public float getSpeed() { return 12.0F; }
+                  public float getAttackDamageBonus() { return 996.0F; }
+                  public int getLevel() { return 4; }
+                  public int getEnchantmentValue() { return 30; }
+                  public Ingredient getRepairIngredient() { return Ingredient.EMPTY; }
+              }
+
+              // ---------------------------------------------------------------- Kilic
+              public static class MysteriousSwordItem extends SwordItem {
+                  public MysteriousSwordItem() {
+                      super(MysteriousTier.INSTANCE, 3, -2.0F,
+                              new Item.Properties().rarity(Rarity.EPIC).fireResistant().stacksTo(1));
+                  }
+
+                  @Override
+                  public boolean hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
+                      if (target.level() instanceof ServerLevel serverLevel) {
+                          serverLevel.sendParticles(ParticleTypes.SOUL_FIRE_FLAME,
+                                  target.getX(), target.getY(0.5D), target.getZ(),
+                                  25, 0.3D, 0.5D, 0.3D, 0.05D);
+                      }
+                      return super.hurtEnemy(stack, target, attacker);
+                  }
+
+                  @Override
+                  public boolean isFoil(ItemStack stack) {
+                      return true;
+                  }
+
+                  @Override
+                                    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+                      tooltip.add(Component.translatable("mysteriouschild.tooltip.sword")
+                              .withStyle(ChatFormatting.GOLD, ChatFormatting.ITALIC));
+                      tooltip.add(Component.translatable("mysteriouschild.tooltip.sword2")
+                              .withStyle(ChatFormatting.DARK_GRAY));
+                  }
+              }
+
+              // ---------------------------------------------------------------- Blok
+              public static class SwordInStoneBlock extends Block {
+                  public SwordInStoneBlock() {
+                      super(BlockBehaviour.Properties.copy(Blocks.STONE)
+                              .strength(-1.0F, 3600000.0F)
+                              .noLootTable()
+                              .lightLevel(state -> 8));
+                  }
+
+                  @Override
+                  public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+                                               InteractionHand hand, BlockHitResult hit) {
+                      if (level.isClientSide || !(level instanceof ServerLevel serverLevel)) {
+                          return InteractionResult.SUCCESS;
+                      }
+
+                      ItemStack sword = new ItemStack(MYSTERIOUS_SWORD.get());
+                      if (!player.getInventory().add(sword)) {
+                          player.drop(sword, false);
+                      }
+
+                      level.setBlock(pos, Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+
+                      LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(serverLevel);
+                      if (bolt != null) {
+                          bolt.moveTo(Vec3.atBottomCenterOf(pos.above()));
+                          bolt.setVisualOnly(true);
+                          serverLevel.addFreshEntity(bolt);
+                      }
+                      serverLevel.sendParticles(ParticleTypes.END_ROD,
+                              pos.getX() + 0.5D, pos.getY() + 1.2D, pos.getZ() + 0.5D,
+                              80, 0.4D, 0.8D, 0.4D, 0.08D);
+                      serverLevel.playSound(null, pos, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
+                              SoundSource.PLAYERS, 1.0F, 0.8F);
+
+                      if (player instanceof ServerPlayer serverPlayer) {
+                          CHANNEL.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new SwordClaimedPacket());
+                      }
+                      return InteractionResult.CONSUME;
+                  }
+              }
+
+              // ---------------------------------------------------------------- Paket
+              public static class SwordClaimedPacket {
+                  public SwordClaimedPacket() {
+                  }
+
+                  public static void encode(SwordClaimedPacket packet, FriendlyByteBuf buf) {
+                  }
+
+                  public static SwordClaimedPacket decode(FriendlyByteBuf buf) {
+                      return new SwordClaimedPacket();
+                  }
+
+                  public static void handle(SwordClaimedPacket packet, Supplier<NetworkEvent.Context> ctx) {
+                      DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientAnimation::start);
+                  }
+              }
+
+              // ---------------------------------------------------------------- Oda
+              public static class SecretRoomBuilder {
+                  public static final int DEPTH = 10;
+                  public static final int HEIGHT = 4;
+
+                  public static BlockPos build(ServerLevel level, BlockPos spawn) {
+                      RandomSource random = level.getRandom();
+                      int floorY = Math.max(spawn.getY() - DEPTH, level.getMinBuildHeight() + 2);
+                      int cx = spawn.getX();
+                      int cz = spawn.getZ();
+                      int ix0 = cx - 5;
+                      int ix1 = cx + 4;
+                      int iz0 = cz - 5;
+                      int iz1 = cz + 4;
+
+                      for (int x = ix0 - 1; x <= ix1 + 1; x++) {
+                          for (int z = iz0 - 1; z <= iz1 + 1; z++) {
+                              for (int y = floorY; y <= floorY + HEIGHT + 1; y++) {
+                                  boolean wall = x == ix0 - 1 || x == ix1 + 1 || z == iz0 - 1 || z == iz1 + 1;
+                                  boolean floor = y == floorY;
+                                  boolean ceiling = y == floorY + HEIGHT + 1;
+                                  BlockState state;
+                                  if (floor) {
+                                      state = Blocks.POLISHED_DEEPSLATE.defaultBlockState();
+                                  } else if (wall || ceiling) {
+                                      state = randomBrick(random);
+                                  } else {
+                                      state = Blocks.AIR.defaultBlockState();
+                                  }
+                                  level.setBlock(new BlockPos(x, y, z), state, Block.UPDATE_CLIENTS);
+                              }
+                          }
+                      }
+
+                      BlockState lantern = Blocks.SOUL_LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, true);
+                      int ly = floorY + HEIGHT;
+                      level.setBlock(new BlockPos(ix0, ly, iz0), lantern, Block.UPDATE_CLIENTS);
+                      level.setBlock(new BlockPos(ix1, ly, iz0), lantern, Block.UPDATE_CLIENTS);
+                      level.setBlock(new BlockPos(ix0, ly, iz1), lantern, Block.UPDATE_CLIENTS);
+                      level.setBlock(new BlockPos(ix1, ly, iz1), lantern, Block.UPDATE_CLIENTS);
+
+                      BlockPos swordPos = new BlockPos(cx, floorY + 1, cz);
+                      for (int dx = -1; dx <= 1; dx++) {
+                          for (int dz = -1; dz <= 1; dz++) {
+                              if (dx != 0 || dz != 0) {
+                                  level.setBlock(swordPos.offset(dx, -1, dz),
+                                          Blocks.CHISELED_STONE_BRICKS.defaultBlockState(), Block.UPDATE_CLIENTS);
+                              }
+                          }
+                      }
+                      level.setBlock(swordPos, SWORD_IN_STONE.get().defaultBlockState(), Block.UPDATE_ALL);
+                      return swordPos;
+                  }
+
+                  private static BlockState randomBrick(RandomSource random) {
+                      float r = random.nextFloat();
+                      if (r < 0.70F) {
+                          return Blocks.STONE_BRICKS.defaultBlockState();
+                      } else if (r < 0.85F) {
+                          return Blocks.MOSSY_STONE_BRICKS.defaultBlockState();
+                      }
+                      return Blocks.CRACKED_STONE_BRICKS.defaultBlockState();
+                  }
+              }
+
+              // ---------------------------------------------------------------- Olaylar
+              @Mod.EventBusSubscriber(modid = MOD_ID)
+              public static class ForgeEvents {
+                  public static final String PERSISTED = "PlayerPersisted";
+                  public static final String ROOM_BUILT = "mysteriouschild_room_built";
+                  public static final String ROOM_POS = "mysteriouschild_room_pos";
+
+                  @SubscribeEvent
+                  public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+                      if (!(event.getEntity() instanceof ServerPlayer player)) {
+                          return;
+                      }
+                      if (!(player.level() instanceof ServerLevel level)) {
+                          return;
+                      }
+                      CompoundTag data = player.getPersistentData();
+                      CompoundTag persisted = data.getCompound(PERSISTED);
+                      if (persisted.getBoolean(ROOM_BUILT)) {
+                          return;
+                      }
+                      BlockPos swordPos = SecretRoomBuilder.build(level, player.blockPosition());
+                      persisted.putBoolean(ROOM_BUILT, true);
+                      persisted.putLong(ROOM_POS, swordPos.asLong());
+                      data.put(PERSISTED, persisted);
+                  }
+
+                  @SubscribeEvent
+                  public static void onCommands(RegisterCommandsEvent event) {
+                      event.getDispatcher().register(
+                              Commands.literal("gizemlioda")
+                                      .requires(source -> source.hasPermission(2))
+                                      .executes(context -> {
+                                          ServerPlayer player = context.getSource().getPlayerOrException();
+                                          CompoundTag persisted = player.getPersistentData().getCompound(PERSISTED);
+                                          if (!persisted.contains(ROOM_POS)) {
+                                              context.getSource().sendFailure(Component.literal("Oda bulunamadi."));
+                                              return 0;
+                                          }
+                                          BlockPos pos = BlockPos.of(persisted.getLong(ROOM_POS));
+                                          context.getSource().sendSuccess(() -> Component.literal(
+                                                  "Gizemli oda: " + pos.getX() + " " + pos.getY() + " " + pos.getZ()), false);
+                                          return 1;
+                                      }));
+                  }
+              }
+
+              // ---------------------------------------------------------------- Istemci
+              @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+              public static class ClientSetup {
+                  @SubscribeEvent
+                  public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
+                      event.registerAboveAll("sword_animation", ClientAnimation.OVERLAY);
+                  }
+              }
+
+              public static class ClientAnimation {
+                  private static final long DURATION_MS = 7000L;
+                  private static long startTime = -1L;
+
+                  public static void start() {
+                      startTime = System.currentTimeMillis();
+                  }
+
+                  public static final IGuiOverlay OVERLAY = (gui, graphics, partialTick, width, height) -> {
+                      if (startTime < 0L) {
+                          return;
+                      }
+                      long elapsed = System.currentTimeMillis() - startTime;
+                      if (elapsed > DURATION_MS) {
+                          startTime = -1L;
+                          return;
+                      }
+                      float envelope = Math.min(smooth(elapsed, 0, 800), 1.0F - smooth(elapsed, DURATION_MS - 1500, DURATION_MS));
+
+                      graphics.fill(0, 0, width, height, argb(0.55F * envelope, 0x000000));
+
+                      float flash = 1.0F - smooth(elapsed, 0, 900);
+                      if (flash > 0.0F) {
+                          graphics.fill(0, 0, width, height, argb(0.85F * flash, 0xFFFFFF));
+                      }
+
+                      for (int i = 0; i < 48; i++) {
+                          float seed = (i * 0.6180339F) % 1.0F;
+                          float speed = 0.00008F + (i % 5) * 0.00003F;
+                          float progress = (seed + elapsed * speed) % 1.0F;
+                          int px = (int) (seed * width);
+                          int py = (int) (progress * height);
+                          int size = 1 + (i % 3);
+                          graphics.fill(px, py, px + size, py + size, argb(0.8F * envelope, 0xFFD966));
+                      }
+
+                      float lineGrow = smooth(elapsed, 600, 1800);
+                      int halfLine = (int) (width * 0.35F * lineGrow);
+                      int cx = width / 2;
+                      int cy = height / 2;
+                      graphics.fill(cx - halfLine, cy - 38, cx + halfLine, cy - 37, argb(envelope, 0xFFAA00));
+                      graphics.fill(cx - halfLine, cy + 38, cx + halfLine, cy + 39, argb(envelope, 0xFFAA00));
+
+                      Font font = Minecraft.getInstance().font;
+
+                      float titleIn = smooth(elapsed, 800, 1800);
+                      float titleScale = 4.0F - 1.5F * titleIn;
+                      float titleAlpha = Math.min(titleIn, envelope);
+                      if (alpha255(titleAlpha) >= 5) {
+                          Component title = Component.translatable("mysteriouschild.animation.title")
+                                  .withStyle(ChatFormatting.BOLD);
+                          graphics.pose().pushPose();
+                          graphics.pose().translate(cx, cy - 14, 0);
+                          graphics.pose().scale(titleScale, titleScale, 1.0F);
+                          graphics.drawCenteredString(font, title, 0, -font.lineHeight / 2, argb(titleAlpha, 0xFFAA00));
+                          graphics.pose().popPose();
+                      }
+
+                      float subIn = smooth(elapsed, 1800, 2800);
+                      float subAlpha = Math.min(subIn, envelope);
+                      if (alpha255(subAlpha) >= 5) {
+                          Component subtitle = Component.translatable("mysteriouschild.animation.subtitle")
+                                  .withStyle(ChatFormatting.ITALIC);
+                          graphics.pose().pushPose();
+                          graphics.pose().translate(cx, cy + 20, 0);
+                          graphics.pose().scale(1.5F, 1.5F, 1.0F);
+                          graphics.drawCenteredString(font, subtitle, 0, 0, argb(subAlpha, 0xFFFFFF));
+                          graphics.pose().popPose();
+                      }
+                  };
+
+                  private static float smooth(long t, long from, long to) {
+                      float x = Mth.clamp((t - from) / (float) (to - from), 0.0F, 1.0F);
+                      return x * x * (3.0F - 2.0F * x);
+                  }
+
+                  private static int alpha255(float alpha) {
+                      return (int) (Mth.clamp(alpha, 0.0F, 1.0F) * 255.0F);
+                  }
+
+                  private static int argb(float alpha, int rgb) {
+                      return (alpha255(alpha) << 24) | (rgb & 0xFFFFFF);
+                  }
+              }
+          }
+          DOSYA_SONU
+          find . -type f -not -path './.git/*' | sort
+      - name: Build
+        run: gradle build --no-daemon --console=plain > build.log 2>&1
+      - name: Rapor
+        if: always()
+        run: |
+          {
+            echo "## Rapor"
+            echo "### Hatalar"
+            echo '```'
+            grep -n -A3 "error:" build.log | head -60
+            echo '```'
+            echo "### Build sonu"
+            echo '```'
+            tail -n 40 build.log
+            echo '```'
+            echo "### Jar"
+            ls -l build/libs 2>&1 || true
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mod-jar
+          path: build/libs/*.jar
+          
